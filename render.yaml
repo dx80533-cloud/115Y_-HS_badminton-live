@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: badminton-live
+    runtime: python
+    plan: free
+    buildCommand: echo ok
+    startCommand: python live_server.py
