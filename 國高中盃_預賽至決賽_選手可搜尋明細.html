@@ -86,10 +86,10 @@ function ingest(text,snap){let j;try{j=typeof text==='string'?JSON.parse(text):t
  ls('R',JSON.stringify(R));applyAll();refresh();return n}
 async function pull(){const m=$('#lmsg'),body=JSON.stringify({api:'matches',Matchno:'299324'}),tries=[];
  if(/^https?:/.test(location.protocol))tries.push(['./proxy',{method:'POST',body}]);
- tries.push([$('#src').value,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body,cache:'no-store'}]);let err='';
- for(const [u,o] of tries){try{const r=await fetch(u,o);const n=ingest(await r.text());if(n<0)throw new Error('回傳格式不符');
+ if(location.protocol!=='https:')tries.push([$('#src').value,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body,cache:'no-store'}]);let err='';
+ for(const [u,o] of tries){try{const r=await fetch(u,o),tx=await r.text();if(!r.ok)throw new Error('伺服器回應 '+r.status+'：'+tx.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,140));const n=ingest(tx);if(n<0)throw new Error('回傳格式不符');
   $('#lst').textContent='最後更新 '+new Date().toLocaleTimeString();m.textContent=`已同步（${u==='./proxy'?'本機代理':'直連 API'}）：目前已完賽／進行中 ${n} 場；日期、時間、場地已套用最新賽程。`;render(1);return}catch(e){err=e.message}}
- m.textContent='無法直接讀取即時戰況（'+err+'）。該伺服器未開放跨網域讀取，請執行隨附的 live_server.py 後用 http://localhost:8765 開啟本頁，或用手動貼上 API 回傳的 JSON。'}
+ m.textContent='無法直接讀取即時戰況（'+err+'）。若為 403／502，代表代理伺服器被主辦方的資料伺服器拒絕；也可用手動貼上 API 回傳的 JSON。'}
 let tm;function sched(){clearInterval(tm);if($('#au').checked)tm=setInterval(pull,30000)}
 $('#go').onclick=pull;$('#au').onchange=sched;$('#ap').onclick=()=>{const n=ingest($('#pa').value);$('#lmsg').textContent=n<0?'內容不是有效的 API JSON。':`已套用，完賽／進行中 ${n} 場。`;$('#lst').textContent='手動更新 '+new Date().toLocaleTimeString();render()};
 $('#clr').onclick=()=>{R={};ls('R','{}');$('#lmsg').textContent='已清除。';render()};

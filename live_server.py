@@ -20,7 +20,12 @@ def fetch_api(body):
     with _lock:
         hit = _cache.get(body)
         if hit and time.time() - hit[0] < CACHE_SEC: return hit[1]
-    req = urllib.request.Request(API, data=body, headers={"Content-Type": "text/plain;charset=UTF-8"})
+    # 與官方即時頁（瀏覽器）送出的請求標頭一致；Python 預設的 User-Agent 常被對方伺服器拒絕（403）
+    req = urllib.request.Request(API, data=body, headers={
+        "Content-Type": "text/plain;charset=UTF-8", "Accept": "*/*", "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+        "Origin": "http://172.105.210.232",
+        "Referer": "http://172.105.210.232/liveresultst/matchesst.html?openid=299324&openExternalBrowser=1",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"})
     data = urllib.request.urlopen(req, timeout=20).read()
     with _lock: _cache[body] = (time.time(), data)
     return data
