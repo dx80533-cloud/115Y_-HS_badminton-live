@@ -3,13 +3,22 @@
 用法：把本檔與 HTML 放同一資料夾 → 雙擊或執行 python live_server.py
       電腦開 http://localhost:8765 ；手機（同一個 Wi-Fi）開畫面上印出的「手機網址」。
 """
-import http.server, urllib.request, os, glob, socket, time, threading, webbrowser
+import http.server, urllib.request, os, glob, socket, time, threading, webbrowser, json, re
 API = "http://172.105.210.232/liveresultst/proxy_st.php"
 CLOUD = bool(os.environ.get('PORT'))   # 雲端平台會提供 PORT 環境變數
 PORT = int(os.environ.get('PORT', 8765))
 CACHE_SEC = 8          # 多人同時查詢時，8 秒內共用同一份資料，減輕主辦伺服器負擔
 HERE = os.path.dirname(os.path.abspath(__file__)); os.chdir(HERE)
 _cache = {}; _lock = threading.Lock()
+ONLINE_WINDOW = 75     # 秒：超過這段時間沒收到心跳就視為離線（網頁每 30 秒回報一次）
+_online = {}           # 匿名隨機代碼 -> 最後回報時間（只存在記憶體，不記錄 IP）
+
+def online_count(cid=None):
+    now = time.time()
+    with _lock:
+        if cid and (cid in _online or len(_online) < 5000): _online[cid] = now
+        for k in [k for k, v in _online.items() if now - v > ONLINE_WINDOW]: del _online[k]
+        return len(_online)
 
 def html_name():
     for n in glob.glob("*.html"):
@@ -37,8 +46,16 @@ class H(http.server.SimpleHTTPRequestHandler):
             self.send_response(302); self.send_header("Location", "/" + urllib.request.quote(html_name())); self.end_headers(); return
         super().do_GET()
     def do_POST(self):
-        if self.path.split("?")[0] != "/proxy": self.send_error(404); return
+        path = self.path.split("?")[0]
         body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        if path == "/ping":
+            try: cid = str(json.loads(body or b"{}").get("id", ""))[:64]
+            except Exception: cid = ""
+            data = json.dumps({"online": online_count(cid if re.fullmatch(r"[A-Za-z0-9]{6,64}", cid) else None)}).encode()
+            self.send_response(200); self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", str(len(data)))
+            self.end_headers(); self.wfile.write(data); return
+        if path != "/proxy": self.send_error(404); return
         try:
             data = fetch_api(body)
             self.send_response(200); self.send_header("Content-Type", "application/json; charset=utf-8")
