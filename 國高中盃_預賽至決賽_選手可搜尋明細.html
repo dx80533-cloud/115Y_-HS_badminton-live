@@ -32,6 +32,11 @@ let R={};try{R=JSON.parse(ls('R')||'{}')}catch(e){}
 function cands(ev,key){const c=CM[ev];if(c[key])return c[key];let r;
  if(key[0]==='s'){const s=D[ev].slots[+key.slice(1)];r=s[0]==='p'?[+key.slice(1)]:[]}
  else r=D[ev].matches[key].f.flatMap(f=>cands(ev,rk(f)));return c[key]=r}
+function alive(ev,key){if(key[0]==='s')return D[ev].slots[+key.slice(1)][0]==='p'?[+key.slice(1)]:[];
+ const m=D[ev].matches[key],r=R[ev]&&R[ev][key];if(r&&r.w!=null)return[r.w];
+ if(r&&r.ab&&!(r.g&&r.g.length))return[];
+ const f=m.f.map(rk),x=alive(ev,f[0]),y=alive(ev,f[1]);
+ if(!cands(ev,f[0]).length)return y;if(!cands(ev,f[1]).length)return x;return x.concat(y)}
 function winner(ev,key){if(key[0]==='s')return D[ev].slots[+key.slice(1)][0]==='p'?+key.slice(1):null;
  const r=R[ev]&&R[ev][key];if(r&&r.w!=null)return r.w;const m=D[ev].matches[key],a=rk(m.f[0]),b=rk(m.f[1]);
  if(!cands(ev,a).length)return winner(ev,b);if(!cands(ev,b).length)return winner(ev,a);return null}
@@ -41,11 +46,11 @@ function rname(ev,m){if(m.st==='Q')return `資格賽 第${m.r}輪`;const t=MAXR[
 function when(m){const a=m.a;return a?`${a[0]}(${a[1]}) ${a[2]}　第${a[3]}場地`:'<span class="mu">—</span>'}
 function path(ev,i){let key='s'+i,out='',me=i,dead=false,first=true;
  while(PAR[ev][key]&&!dead){const mk=PAR[ev][key],m=D[ev].matches[mk],o=m.f.map(rk).find(x=>x!==key),r0=R[ev]&&R[ev][mk],r=r0&&(r0.w!=null||(r0.g&&r0.g.length)||r0.ab)?r0:null;
-  const cs=cands(ev,o),w=winner(ev,o);let op;
+  const cs=cands(ev,o),al=alive(ev,o);let op;
   if(!cs.length)op='<span class="mu">輪空（直接晉級）</span>';
-  else if(w!=null)op=sl(ev,w)+(cs.length>1?' <span class="b">已確定</span>':'');
-  else if(cs.length===1)op=sl(ev,cs[0]);
-  else op=`勝者 <span class="mu">${o[0]==='s'?'':(o[0]==='Q'?'Q#':'#')+o.slice(1)}</span> 之間（${cs.length}人可能）<details class="d"><summary>展開可能對手</summary><div>${cs.map(c=>sn(ev,c)+' '+D[ev].slots[c][2]).join('<br>')}</div></details>`;
+  else if(!al.length)op='<span class="mu">對手雙棄（無對手）</span>';
+  else if(al.length===1)op=sl(ev,al[0])+(cs.length>1?' <span class="b">已確定</span>':'');
+  else op=`勝者 <span class="mu">${o[0]==='s'?'':(o[0]==='Q'?'Q#':'#')+o.slice(1)}</span> 之間（${al.length}人可能）<details class="d"><summary>展開可能對手</summary><div>${al.map(c=>sn(ev,c)+' '+D[ev].slots[c][2]).join('<br>')}</div></details>`;
   let res='';
   if(r){const fs=((/^\s*([AB])/.exec(r.ab||'')||[])[1]),ff=fs?(fs==='A'?r.A:r.B):null,fx=r.ab?(ff===me?' 棄權':ff!=null?' 對手棄權':' 棄權'):'';const gs=(r.g||[]).map(g=>(r.B===me?[g[1],g[0]]:g).join('-')).join(' | ')+fx;if(r.w!=null){const win=r.w===me;res=`<span class="${win?'ok':'no'}">${win?'勝':'敗'}</span> ${gs}`;if(!win)dead=true}else if(r.ab&&!(r.g&&r.g.length)){res='<span class="no">雙棄</span>';dead=true}else res=`<span class="lv">進行中</span> ${gs}`}
   else if(!cs.length)res='<span class="ok">晉級</span>';
