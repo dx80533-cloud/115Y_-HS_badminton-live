@@ -13,7 +13,7 @@
 <div class="mu" id="lmsg" style="margin-top:6px"></div></div>
 <div class="filters"><label>選手姓名（雙打可搜任一人）<input id="name" type="search" placeholder="例如: 周群凱" autocomplete="off"></label><label>學校／隊名<input id="school" type="search" placeholder="例如: 光明 . 南崁" autocomplete="off"></label><label>學制<select id="level"><option value="">全部</option><option value="國">國中</option><option value="高">高中</option></select></label><label>競賽項目<select id="ev"><option value="">全部項目</option><option value="男單">男子單打</option><option value="女單">女子單打</option><option value="男雙">男子雙打</option><option value="女雙">女子雙打</option><option value="混雙">混合雙打</option></select></label><label>比賽日期<select id="date"><option value="">全部日期</option></select></label></div>
 <div class="tools"><p id="cnt" aria-live="polite"></p><button class="button" id="clear">清除篩選</button></div>
-<p class="caption">點開選手卡片，查看完整晉級路線。依首場出賽時間排序，每頁顯示 30 筆。選擇比賽日期時，只列出當天有比賽的選手，依當天首場排序，當天場次以黃底標示。</p>
+<p class="caption">點開選手卡片，查看完整晉級路線。依首場出賽時間排序，每頁顯示 30 筆。選擇比賽日期時，只列出當天有比賽的選手（已在該日期之前淘汰者不列出），依當天首場排序，當天場次以黃底標示。</p>
 <div id="out"></div>
 <div class="tools"><span></span><div class="pages"><button class="button prev">上一頁</button><span class="page"></span><button class="button next">下一頁</button></div></div>
 <footer>資料來源：115年全國國高中盃個人羽球錦標賽_賽程表_1005.xlsx（日期時間場地以場地分配表為準）。若主辦後續調整，以最新公告與現場叫號為準。<br>Copyright © JJ Lin</footer>
@@ -61,8 +61,15 @@ applyAll();refresh();
 const TH='<tr><th>輪次／場次</th><th>日期時間場地</th><th>對手</th><th>結果</th></tr>';
 const body=x=>`<p class="mu" style="margin:15px 24px 0">後續各輪均以持續獲勝為前提；點「展開可能對手」可看候選人。</p><div class="tablewrap"><table>${TH}${path(x.ev,x.i)}</table></div>`;
 let PG=0,SELD='';const OPEN=new Set();const dkey=(x,d)=>tkey(x.ms.find(m=>m.a&&m.a[0]===d));
+const dnum=m=>{if(!m||!m.a)return 0;const p=m.a[0].split('/');return +p[0]*100+ +p[1]};
+function elimNum(x){const ev=x.ev;let key='s'+x.i;while(PAR[ev][key]){const mk=PAR[ev][key],m=D[ev].matches[mk],o=m.f.map(rk).find(k=>k!==key),r=R[ev]&&R[ev][mk];
+ if(!cands(ev,o).length){key=mk;continue}
+ if(r&&r.w!=null){if(r.w!==x.i)return dnum(m);key=mk;continue}
+ if(r&&r.ab&&!(r.g&&r.g.length))return dnum(m);
+ return null}return null}
+const gone=(x,d)=>{const e=elimNum(x);return e!=null&&e<d};
 function render(keep){if(!keep)PG=0;const nm=$('#name').value.trim().toLowerCase().split(/\s+/).filter(Boolean),sc=$('#school').value.trim().toLowerCase(),lv=$('#level').value,ev=$('#ev').value;
- const dt=$('#date').value;SELD=dt;const SH=IDX.filter(x=>(!lv||x.ev[0]===lv)&&(!ev||x.ev.slice(1)===ev)&&(!dt||x.dates.has(dt))&&(!sc||x.s.includes(sc))&&nm.every(w=>x.n.includes(w)));if(dt)SH.sort((a,b)=>dkey(a,dt)-dkey(b,dt));
+ const dt=$('#date').value;SELD=dt;const dn0=dt?(+dt.split('/')[0])*100+(+dt.split('/')[1]):0;const SH=IDX.filter(x=>(!lv||x.ev[0]===lv)&&(!ev||x.ev.slice(1)===ev)&&(!dt||(x.dates.has(dt)&&!gone(x,dn0)))&&(!sc||x.s.includes(sc))&&nm.every(w=>x.n.includes(w)));if(dt)SH.sort((a,b)=>dkey(a,dt)-dkey(b,dt));
  const pages=Math.max(1,Math.ceil(SH.length/30));PG=Math.min(PG,pages-1);const lim=SH.slice(PG*30,PG*30+30);
  $('#cnt').textContent=`符合 ${SH.length} 位／筆選手`;
  document.querySelectorAll('.page').forEach(e=>e.textContent=`第 ${PG+1} / ${pages} 頁`);
