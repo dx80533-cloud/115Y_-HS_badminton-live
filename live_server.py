@@ -3,7 +3,7 @@
 用法：把本檔與 HTML 放同一資料夾 → 雙擊或執行 python live_server.py
       電腦開 http://localhost:8765 ；手機（同一個 Wi-Fi）開畫面上印出的「手機網址」。
 """
-import http.server, urllib.request, os, glob, socket, time, threading, webbrowser, json, re
+import http.server, urllib.request, os, glob, socket, time, threading, webbrowser, json, re, sys
 API = "http://172.105.210.232/liveresultst/proxy_st.php"
 CLOUD = bool(os.environ.get('PORT'))   # 雲端平台會提供 PORT 環境變數
 PORT = int(os.environ.get('PORT', 8765))
@@ -78,4 +78,8 @@ if __name__ == "__main__":
         print(f" 電腦：http://localhost:{PORT}"); print(f" 手機：http://{lan_ip()}:{PORT}   （手機需連同一個 Wi-Fi）")
         print(" 若手機連不上：Windows 防火牆跳出視窗時請按「允許存取」。\n")
         threading.Timer(1, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
-    http.server.ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()
+    class Srv(http.server.ThreadingHTTPServer):
+        def handle_error(self, request, client_address):   # 使用者中途關閉頁面／切換網路造成的斷線，屬正常現象，不必印出錯誤
+            if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError)): return
+            super().handle_error(request, client_address)
+    Srv(("0.0.0.0", PORT), H).serve_forever()

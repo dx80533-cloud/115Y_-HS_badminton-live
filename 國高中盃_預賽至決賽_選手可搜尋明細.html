@@ -73,7 +73,7 @@ function upcoming(x){const ev=x.ev,out=[];let key='s'+x.i,st=false;while(PAR[ev]
  if(!cands(ev,o).length){key=mk;continue}
  if(!st){if(r&&r.w!=null){if(r.w!==x.i)return[];key=mk;continue}if(r&&r.ab&&!(r.g&&r.g.length))return[];st=true}
  out.push(m);if(out.length>=3)break;key=mk}return out}
-const thr=x=>{const u=upcoming(x);return u.length?u.map(m=>`<div class="q"><b>${fm(m)}</b> <span>${rname(x.ev,m)}</span></div>`).join(''):'<div class="q">—</div>'};
+const thr=x=>{if(x.nx.s==='out')return`<div class="q"><b class="no">已淘汰</b> <span>${rname(x.ev,x.nx.m)}・${fm(x.nx.m)}</span></div>`;if(x.nx.s==='done')return'<div class="q"><b class="ok">冠軍</b></div>';const u=upcoming(x);return u.length?u.map(m=>`<div class="q"><b>${fm(m)}</b> <span>${rname(x.ev,m)}</span></div>`).join(''):'<div class="q">—</div>'};
 function applyAll(){for(const ev in R)for(const k in R[ev]){const r=R[ev][k],m=D[ev]&&D[ev].matches[k];if(m&&r&&r.at)m.a=r.at}}
 function refresh(){for(const x of IDX){const c=chain(x.ev,x.i).map(k=>D[x.ev].matches[k]),f=c.find(m=>m.a);x.f=f;x.l=c[c.length-1];x.ms=c;x.k0=tkey(f);x.nx=nextInfo(x);x.k=x.nx.s==='out'?9.6e9:x.nx.s==='done'?9.5e9:tkey(x.nx.m);x.dates=new Set(c.filter(m=>m.a).map(m=>m.a[0]))}IDX.sort((a,b)=>a.k-b.k)}
 applyAll();refresh();
@@ -95,7 +95,7 @@ function render(keep){if(!keep)PG=0;const nm=$('#name').value.trim().toLowerCase
  document.querySelectorAll('.prev').forEach(e=>e.disabled=PG===0);document.querySelectorAll('.next').forEach(e=>e.disabled=PG>=pages-1);
  const el=$('#out');if(!lim.length){el.innerHTML='<div class="empty">找不到符合條件的選手。</div>';return}
  el.innerHTML=lim.map(x=>{const s=D[x.ev].slots[x.i],id=x.ev+x.i,op=OPEN.has(id)||(lim.length<=3);
-  return `<details class="player" data-id="${id}" ${op?'open':''}><summary><div><span class="name">${s[1].join(' / ')}</span><span class="tag">${x.ev}</span>${s[3]?`<span class="tag">${s[3]}</span>`:''}<div class="school">${s[2]}</div></div><div class="time">${any?nxv(x):fm(x.f)}<span class="openlabel">${any?nxl(x):'首戰'}</span></div><div class="time">${fm(x.l)}<span class="openlabel">預計決賽（需全勝）</span></div><div>${thr(x)}<span class="openlabel">接下來三場</span></div></summary><div class="bd">${op?body(x):''}</div></details>`}).join('');
+  return `<details class="player" data-id="${id}" ${op?'open':''}><summary><div><span class="name">${s[1].join(' / ')}</span><span class="tag">${x.ev}</span>${s[3]?`<span class="tag">${s[3]}</span>`:''}<div class="school">${s[2]}</div></div><div class="time">${any?nxv(x):fm(x.f)}<span class="openlabel">${any?nxl(x):'首戰'}</span></div><div class="time">${fm(x.l)}<span class="openlabel">預計決賽（需全勝）</span></div><div>${thr(x)}<span class="openlabel">${x.nx.s==='out'?'淘汰場次':'接下來三場'}</span></div></summary><div class="bd">${op?body(x):''}</div></details>`}).join('');
  el.querySelectorAll('.player').forEach(d=>d.addEventListener('toggle',()=>{const id=d.dataset.id;if(d.open){OPEN.add(id);const x=lim.find(y=>y.ev+y.i===id);const bd=d.querySelector('.bd');if(!bd.innerHTML)bd.innerHTML=body(x)}else OPEN.delete(id)}))}
 // ---- live
 function ingest(text,snap){let j;try{j=typeof text==='string'?JSON.parse(text):text}catch(e){return -1}
