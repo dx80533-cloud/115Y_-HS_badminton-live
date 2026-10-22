@@ -99,29 +99,39 @@ function render(keep){if(!keep)PG=0;const nm=$('#name').value.trim().toLowerCase
  el.querySelectorAll('.player').forEach(d=>d.addEventListener('toggle',()=>{const id=d.dataset.id;if(d.open){OPEN.add(id);const x=lim.find(y=>y.ev+y.i===id);const bd=d.querySelector('.bd');if(!bd.innerHTML)bd.innerHTML=body(x)}else OPEN.delete(id)}))}
 // ---- live
 function ingest(text,snap){let j;try{j=typeof text==='string'?JSON.parse(text):text}catch(e){return -1}
- const sch=Array.isArray(j)?j:(j&&j.result&&j.result.schedule)||(j&&j.schedule);if(!sch)return -1;let n=0;
- for(const s of sch){const g=/^(.+?)(資格賽|會內賽)\[(\d+)\]/.exec(s.groupName||'');if(!g)continue;const ev=g[1],key=(g[2]==='資格賽'?'Q':'M')+g[3],m=D[ev]&&D[ev].matches[key];if(!m)continue;
+ const sch=Array.isArray(j)?j:(j&&j.result&&j.result.schedule)||(j&&j.schedule);if(!sch)return -1;let n=0,fin=0;if(!snap)MISS=0;
+ const ord=s=>{const g=/^(.+?)(資格賽|會內賽)\[(\d+)\]/.exec(s.groupName||'');if(!g)return 9e9;const m=D[g[1]]&&D[g[1]].matches[(g[2]==='資格賽'?'Q':'M')+g[3]];return m?(g[2]==='資格賽'?0:100)+m.r:9e9};
+ for(const s of sch.slice().sort((x,y)=>ord(x)-ord(y))){const g=/^(.+?)(資格賽|會內賽)\[(\d+)\]/.exec(s.groupName||'');if(!g)continue;const ev=g[1],key=(g[2]==='資格賽'?'Q':'M')+g[3],m=D[ev]&&D[ev].matches[key];if(!m)continue;
   R[ev]=R[ev]||{};if(snap&&R[ev][key])continue;const r={};
   const [Y,mo,da]=(s.date||'').split('-');if(da)r.at=[`${+mo}/${+da}`,'日一二三四五六'[new Date(+Y,+mo-1,+da).getDay()],s.time,+s.court];
-  const f=m.f.map(rk),nn=x=>x.replace(/\[.*?\]/g,'').trim(),find=(p,o)=>{if(!p)return null;const k=p.split('/').map(nn).sort().join('/');const c=cands(ev,o).find(i=>D[ev].slots[i][1].map(nn).sort().join('/')===k);return c==null?null:c};
-  let a=find(s.playerA,f[0]),b=find(s.playerB,f[1]);if(a==null&&b==null){a=find(s.playerA,f[1]);b=find(s.playerB,f[0])}
-  r.A=a;r.B=b;r.g=((s.ScoreList&&s.ScoreList[0]&&s.ScoreList[0].scoreinfo)||[]).filter(x=>x.scoreA!==undefined&&x.scoreA!==''&&(+x.scoreA||+x.scoreB)).map(x=>[+x.scoreA,+x.scoreB]);
-  if(!r.g.length&&(s.winner==='A'||s.winner==='B')&&s.abstain&&(+s.scoreA||+s.scoreB))r.g=[[+s.scoreA,+s.scoreB]];
-  if(s.winner==='A'||s.winner==='B'){const w=s.winner==='A'?a:b;if(w!=null)r.w=w}
-  r.ab=s.abstain||'';R[ev][key]=r;if(r.w!=null||r.g.length)n++}
- ls('R',JSON.stringify(R));if(!snap){let dn=0;for(const s of sch){const ab=s.abstain||'';if(s.winner==='A'||s.winner==='B'||ab)dn++}DONE=dn;ls('DONE',dn);setDone()}applyAll();refresh();return n}
+  const f=m.f.map(rk),nn=x=>String(x).replace(/\[.*?\]/g,'').replace(/\s+/g,''),parts=p=>(p||'').split(/[\/／\-－]/).map(nn).filter(Boolean),mA=(s.ScoreList&&s.ScoreList[0]&&s.ScoreList[0].scoreinfo&&s.ScoreList[0].scoreinfo[0])||{},pA=s.playerA+'/'+(mA.memberA||''),pB=s.playerB+'/'+(mA.memberB||'');
+  const sc=(p,i)=>{const b=D[ev].slots[i][1].map(nn);return parts(p).filter(x=>b.includes(x)).length};
+  const best=(p,o)=>{if(!p)return null;let bi=null,bs=0,tie=false;for(const i of cands(ev,o)){const v=sc(p,i);if(v>bs){bs=v;bi=i;tie=false}else if(v===bs&&v>0)tie=true}return bs>0&&!tie?bi:null};
+  const tmm=(t,o)=>{const q=(t||'').split('/')[0].trim();if(!q)return null;const c=cands(ev,o).filter(i=>D[ev].slots[i][2]===q);return c.length===1?c[0]:null};
+  const cnt=z=>(z[0]!=null)+(z[1]!=null);
+  const o1=[best(pA,f[0]),best(pB,f[1])],o2=[best(pA,f[1]),best(pB,f[0])];
+  let a=null,b=null,fa=f[0],fb=f[1],ok=true;
+  if(cnt(o1)>=cnt(o2)&&cnt(o1)>0)[a,b]=o1;else if(cnt(o2)>0){[a,b]=o2;fa=f[1];fb=f[0]}
+  else{const t1=[tmm(s.teamA,f[0]),tmm(s.teamB,f[1])],t2=[tmm(s.teamA,f[1]),tmm(s.teamB,f[0])];
+   if(cnt(t1)>=cnt(t2)&&cnt(t1)>0)[a,b]=t1;else if(cnt(t2)>0){[a,b]=t2;fa=f[1];fb=f[0]}else ok=false}
+  if(ok){if(a==null){const al=alive(ev,fa);if(al.length===1)a=al[0]}if(b==null){const al=alive(ev,fb);if(al.length===1)b=al[0]}}
+  r.A=a;r.B=b;r.g=((s.ScoreList&&s.ScoreList[0]&&s.ScoreList[0].scoreinfo)||[]).filter(x=>x.scoreA!==undefined&&x.scoreA!==''&&x.scoreB!==''&&isFinite(+x.scoreA)&&isFinite(+x.scoreB)&&(+x.scoreA||+x.scoreB)).map(x=>[+x.scoreA,+x.scoreB]);
+  let wd=s.winner;if(wd!=='A'&&wd!=='B'&&!s.abstain){let wa=0,wb=0;r.g.forEach(x=>{x[0]>x[1]?wa++:x[1]>x[0]&&wb++});if(wa>=2)wd='A';else if(wb>=2)wd='B'}
+  if(wd==='A'||wd==='B'){const w=wd==='A'?a:b;if(w!=null)r.w=w;else if(s.winner===wd)MISS++}
+  r.ab=s.abstain||'';R[ev][key]=r;if(wd==='A'||wd==='B'||s.abstain)fin++;if(r.w!=null||r.g.length)n++}
+ ls('R',JSON.stringify(R));if(!snap){DONE=fin;ls('DONE',fin);setDone()}applyAll();refresh();return n}
 async function pull(){const m=$('#lmsg'),body=JSON.stringify({api:'matches',Matchno:'299324'}),tries=[];
  if(/^https?:/.test(location.protocol))tries.push(['./proxy',{method:'POST',body}]);
  if(location.protocol!=='https:')tries.push([$('#src').value,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body,cache:'no-store'}]);let err='';
  for(const [u,o] of tries){try{const r=await fetch(u,o),tx=await r.text();if(!r.ok)throw new Error('伺服器回應 '+r.status+'：'+tx.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,140));const n=ingest(tx);if(n<0)throw new Error('回傳格式不符');
-  $('#lst').textContent='最後更新 '+new Date().toLocaleTimeString();m.textContent=`已同步（${u==='./proxy'?'本機代理':'直連 API'}）：日期、時間、場地已套用最新賽程。`;render(1);return}catch(e){err=e.message}}
+  $('#lst').textContent='最後更新 '+new Date().toLocaleTimeString();m.textContent=`已同步（${u==='./proxy'?'本機代理':'直連 API'}）：日期、時間、場地已套用最新賽程。${MISS?`（有 ${MISS} 場比分因選手姓名與賽程表不一致，暫時無法帶入勝負）`:''}`;render(1);return}catch(e){err=e.message}}
  m.textContent='無法直接讀取即時戰況（'+err+'）。若為 403／502，代表代理伺服器被主辦方的資料伺服器拒絕。'}
 let tm;function sched(){clearInterval(tm);if($('#au').checked)tm=setInterval(pull,180000)}
 $('#go').onclick=pull;$('#au').onchange=sched;
 ['#name','#school'].forEach(s=>$(s).oninput=()=>render());['#level','#ev','#date'].forEach(s=>$(s).onchange=()=>render());
 $('#clear').onclick=()=>{['#name','#school','#level','#ev','#date'].forEach(s=>$(s).value='');render()};
 document.querySelectorAll('.pgin').forEach(i=>i.onchange=()=>{PG=Math.max(1,Math.min(PAGES,Math.floor(+i.value)||1))-1;render(1);scrollTo(0,0)});document.querySelectorAll('.prev').forEach(b=>b.onclick=()=>{PG--;render(1);scrollTo(0,0)});document.querySelectorAll('.next').forEach(b=>b.onclick=()=>{PG++;render(1);scrollTo(0,0)});
-let DONE=+(ls('DONE')||0);const setDone=()=>{const e=document.getElementById('stDone');if(e)e.textContent=DONE.toLocaleString()};
+let MISS=0,DONE=+(ls('DONE')||0);const setDone=()=>{const e=document.getElementById('stDone');if(e)e.textContent=DONE.toLocaleString()};
 {const sg=IDX.filter(x=>x.ev.includes('單')).length;$('#stats').innerHTML=`<div><strong>10</strong><span>國高中組別</span></div><div><strong>${IDX.length.toLocaleString()}</strong><span>參賽筆數</span></div><div><strong>${sg.toLocaleString()}</strong><span>單打選手</span></div><div><strong>${IDX.length-sg}</strong><span>雙打／混雙組數</span></div><div><strong id="stDone">0</strong><span>已完賽／雙棄</span></div>`;setDone()}
 ingest(SNAP,1);{const p=s=>s.split('/').map(Number),ds=[...new Set(IDX.flatMap(x=>[...x.dates]))].sort((a,b)=>p(a)[0]-p(b)[0]||p(a)[1]-p(b)[1]);ds.forEach(d=>{const [m,dd]=p(d);$('#date').add(new Option(`${d}（${'日一二三四五六'[new Date(2026,m-1,dd).getDay()]}）`,d))})}render();sched();setTimeout(pull,500);
 {let cid=ls('cid');if(!cid){cid=Math.random().toString(36).slice(2)+Date.now().toString(36);ls('cid',cid)}
